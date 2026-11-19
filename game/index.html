@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palmera Bay: Sunset Heat</title>
+<link rel="stylesheet" href="./src/ui/hud.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="hud" class="hidden">
+  <div id="topRight">
+    <div id="clock">18:40</div>
+    <div id="weaponBox"><span id="weaponName">FISTS</span> <span id="ammo"></span></div>
+    <div id="money">$0</div>
+    <div id="stars"></div>
+  </div>
+  <div id="minimapBox">
+    <canvas id="minimap" width="220" height="220"></canvas>
+    <div id="district">Ocean Drive</div>
+    <div id="bars"><div id="hpBar"><i></i></div><div id="armorBar"><i></i></div></div>
+  </div>
+  <div id="speedo" class="hidden"><b id="speedVal">0</b><small>MPH</small><div id="carName"></div></div>
+  <div id="objective"></div>
+  <div id="subtitle"></div>
+  <div id="toast"></div>
+  <div id="bigText"></div>
+  <div id="prompt"></div>
+  <div id="crosshair">+</div>
+  <div id="missionTimer"></div>
+</div>
+<div id="bigMap" class="hidden"><canvas id="bigMapCanvas" width="760" height="760"></canvas><div class="legend">M close &middot; <b class="y">&#9679;</b> story &middot; <b class="g">&#9679;</b> side job &middot; <b class="c">&#9679;</b> shop &middot; <b class="p">&#9679;</b> safehouse</div></div>
+<div id="menu">
+  <div class="logo"><span class="l1">PALMERA BAY</span><span class="l2">Sunset Heat</span></div>
+  <div class="tag">An open-world crime story on the Suncoast</div>
+  <div id="menuItems"></div>
+  <div class="help">WASD move &middot; Mouse look &middot; Click shoot &middot; F enter/exit car &middot; Space handbrake/jump &middot; Shift sprint &middot; Q/E weapons &middot; M map &middot; Esc pause</div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

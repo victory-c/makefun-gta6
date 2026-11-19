@@ -1,0 +1,124 @@
+// Deterministic screenshot scenes (?shot=chase|beach|downtown|map): real gameplay simulated for a few
+// seconds with scripted input, then one rendered frame. Used to take the entry's screenshots.
+import { G } from './core/state.js';
+import { simulateKey, mouse } from './core/input.js';
+import { cam } from './core/cameraRig.js';
+import { CITY } from './config.js';
+import { layout, roadAt } from './world/cityLayout.js';
+import { spawnVehicle } from './actors/vehicles.js';
+import { enterVehicle } from './actors/player.js';
+import { setWanted } from './actors/police.js';
+import { spawnPed } from './actors/pedestrians.js';
+import { makeAi } from './actors/traffic.js';
+import { startMission } from './gameplay/missionRunner.js';
+import { STORY } from './gameplay/storyMissions.js';
+import { reseed } from './core/rng.js';
+import { hud } from './ui/hud.js';
+
+const SCENES = {
+  // Cover: a three-star chase up Ocean Drive with the van heist objective on screen.
+  chase: {
+    frames: 110,
+    setup() {
+      G.storyStep = 4; G.money = 18450; G.weaponIndex = 1;
+      const x = roadAt(8) + CITY.laneOffset - 7.2;
+      const car = spawnVehicle('sports', x, 150, Math.PI, 0xff3d8b);
+      enterVehicle(car);
+      car.vx = 0; car.vz = -24; car.speed = 24;
+      for (const [dx, dz] of [[-3, 22], [3.5, 34], [-1, 50]]) {
+        const c = spawnVehicle('police', x + dx, 150 + dz, Math.PI);
+        c.driver = 'cop'; c.sirenOn = true; c.ai = { cop: true, ti: 8, tj: 1 };
+        c.vz = -26; c.speed = 26;
+      }
+      setWanted(3);
+      G.copsSee = true;
+      startMission(STORY[4]);
+      G.mission.idx = 2;
+      hud.objective('Lose the cops and stash the cash at the safehouse');
+      hud.say('Jolene Park', 'Three cruisers on your tail. Cut through the beach!', 6, 2.6);
+      cam.yaw = Math.PI;
+      simulateKey('KeyW', true);
+    },
+    input(i) { simulateKey('KeyA', i > 60 && i < 75); },
+    camera() { cam.yaw = Math.PI + 0.38; cam.pitch = 0.16; },
+  },
+  // On foot on Pelican Sands, pistol drawn against the Gold Tide crew.
+  beach: {
+    frames: 70,
+    setup() {
+      G.storyStep = 3; G.money = 6120; G.godMode = true;
+      G.weapons.pistol = 48; G.weaponIndex = 1;
+      const p = G.player;
+      p.x = layout.beach.x0 + 20; p.z = 132;
+      startMission(STORY[3]);
+      G.mission.idx = 0;
+      G.mission.stage = { text: '', update: () => undefined };
+      const gang = [];
+      for (const [dx, dz] of [[-6, 24], [3, 28], [9, 21], [-2, 33], [6, 36]]) gang.push(spawnPed('gang', p.x + dx, p.z + dz, { tag: 'gold' }));
+      gang[1].hurt(999, p.x, p.z, false); gang[3].hurt(999, p.x, p.z, false);
+      for (const q of gang) q.fire = 0.9 + Math.random();
+      hud.objective('Take out the Gold Tide crew (2/5)');
+      setWanted(1);
+      cam.yaw = 0.1; cam.pitch = 0.08;
+      mouse.right = true;
+    },
+    input(i) { if (i === 64) mouse.leftPressed = true; },
+    camera() { cam.yaw = 0.12; cam.pitch = 0.05; },
+  },
+  // Rush hour downtown: driving among traffic with towers overhead.
+  downtown: {
+    frames: 90,
+    setup() {
+      G.storyStep = 2; G.money = 2740;
+      const x = roadAt(4) + CITY.laneOffset, z = roadAt(5) - 20;
+      const car = spawnVehicle('suv', x, z, Math.PI, 0x1d70a2);
+      enterVehicle(car);
+      car.vz = -14; car.speed = 14;
+      for (let k = 0; k < 6; k++) {
+        const t = spawnVehicle(['taxi', 'sedan', 'compact', 'sports', 'pickup', 'sedan'][k], roadAt(4) + (k % 2 ? -CITY.laneOffset : CITY.laneOffset), z - 14 - k * 13, k % 2 ? 0 : Math.PI, [0xffc20e, 0xe63946, 0xf1faee, 0xffb703, 0x2a9d8f, 0x8338ec][k]);
+        t.driver = 'ai';
+        t.ai = k % 2 ? makeAi(4, 4, 4, 5) : makeAi(4, 5, 4, 4);
+      }
+      startMission(STORY[2]);
+      cam.yaw = Math.PI;
+      simulateKey('KeyW', true);
+    },
+    input(i) { simulateKey('KeyW', i < 50); },
+    camera() { cam.yaw = Math.PI - 0.5; cam.pitch = 0.3; },
+  },
+  map: {
+    frames: 30,
+    setup() {
+      G.storyStep = 1; G.money = 1250;
+      const p = G.player;
+      p.x = roadAt(2) + 8; p.z = roadAt(4);
+      startMission(STORY[1]);
+    },
+    after() {
+      G.mode = 'map';
+      document.getElementById('bigMap').classList.remove('hidden');
+    },
+  },
+};
+
+export function runShot(name, api) {
+  const sc = SCENES[name] ?? SCENES.chase;
+  reseed(42);
+  api.startPlay();
+  sc.setup();
+  const dt = 1 / 30;
+  const realRender = G.renderer.render.bind(G.renderer);
+  G.renderer.render = () => {};
+  for (let i = 0; i < sc.frames; i++) {
+    sc.input?.(i);
+    if (i > sc.frames - 25) sc.camera?.();
+    api.step(dt);
+    api.render(dt);
+    mouse.leftPressed = false;
+  }
+  sc.after?.();
+  G.renderer.render = realRender;
+  api.render(dt);
+  api.render(0.001);
+  window.__shotReady = true;
+}
