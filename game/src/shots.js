@@ -8,7 +8,7 @@ import { layout, roadAt } from './world/cityLayout.js';
 import { spawnVehicle } from './actors/vehicles.js';
 import { enterVehicle } from './actors/player.js';
 import { setWanted } from './actors/police.js';
-import { spawnPed } from './actors/pedestrians.js';
+import { spawnPed, crowdAround } from './actors/pedestrians.js';
 import { makeAi } from './actors/traffic.js';
 import { startMission } from './gameplay/missionRunner.js';
 import { STORY } from './gameplay/storyMissions.js';
@@ -33,7 +33,7 @@ const SCENES = {
       // clear the lane ahead so the chase stays on Ocean Drive
       for (const v of [...G.vehicles]) if (v.driver === 'ai' && Math.abs(v.x - x) < 9 && v.z > -170 && v.z < 0) v.remove();
       setWanted(3);
-      G.copsSee = true;
+      crowdAround(x, -55, 18, 4, 40);
       startMission(STORY[4]);
       G.mission.idx = 2;
       hud.say('Jolene Park', 'Three cruisers on your tail. Lose them before the safehouse!', 6, 2.6);
@@ -82,6 +82,7 @@ const SCENES = {
         t.ai = west ? makeAi(5, 2, 4, 2) : makeAi(3, 2, 4, 2);
       }
       startMission(STORY[2]);
+      crowdAround(x - 30, z, 26, 6, 45);
       cam.yaw = -Math.PI / 2;
       simulateKey('KeyW', true);
     },

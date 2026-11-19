@@ -12,7 +12,7 @@ import { buildSky, updateSky } from './world/sky.js';
 import { createPlayer, updatePlayer, hurtPlayer, nearbyCarPrompt, exitVehicle } from './actors/player.js';
 import { spawnVehicle, resolveVehicleContacts } from './actors/vehicles.js';
 import { populateTraffic, updateTraffic, updateParked } from './actors/traffic.js';
-import { populatePeds, updatePeds } from './actors/pedestrians.js';
+import { populatePeds, updatePeds, crowdAround } from './actors/pedestrians.js';
 import { updatePolice, clearWanted, resetPolice } from './actors/police.js';
 import { initEffects, updateEffects } from './gameplay/effects.js';
 import { updateWeapons } from './gameplay/weapons.js';
@@ -115,6 +115,7 @@ function respawn() {
   if (downKind === 'busted') { G.weapons.pistol = Math.min(G.weapons.pistol, 12); G.weapons.smg = 0; G.weapons.shotgun = 0; }
   clearWanted(); resetPolice();
   for (const q of [...G.peds]) if (q.kind === 'cop') q.remove();
+  crowdAround(p.x, p.z, 12);
   G.deathCam = false;
   canvas.classList.remove('dead');
   hud.toast(`-${fee}$ ${downKind === 'wasted' ? 'hospital bill' : 'bail'}`);

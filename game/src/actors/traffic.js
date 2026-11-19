@@ -5,6 +5,7 @@ import { CITY, PALETTE, RULES } from '../config.js';
 import { rng, clamp, angleDiff, makeRng } from '../core/rng.js';
 import { nodePos, roadAt } from '../world/cityLayout.js';
 import { spawnVehicle } from './vehicles.js';
+import { sfx } from '../core/audio.js';
 
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 const inGrid = (i, j) => i >= 0 && j >= 0 && i < CITY.roads && j < CITY.roads;
@@ -75,10 +76,14 @@ export function aiDrive(v, dt) {
   const tz = L.B.z + L.dz * ahead + L.rz * CITY.laneOffset;
   const turning = ai.ni !== undefined && (ai.ni - ai.ti !== L.dx || ai.nj - ai.tj !== L.dz);
   let want = ai.cruise * (turning && toB < 26 ? 0.55 : 1);
-  if (blockedAhead(v)) { want = 0; ai.blocked += dt; } else ai.blocked = 0;
+  ai.force = (ai.force ?? 0) - dt;
+  if (ai.force <= 0 && blockedAhead(v)) {
+    want = 0; ai.blocked += dt;
+    if (ai.blocked > 6) { ai.force = 1.5; ai.blocked = 0; }   // break deadlocks at junctions by nudging through
+  } else ai.blocked = 0;
   let c = steerTo(v, tx, tz, want);
   if (want === 0) c = { throttle: v.speed > 0.3 ? -1 : 0, steer: c.steer, brake: false };
-  if (ai.blocked > 2.5 && ai.blocked - dt <= 2.5 && Math.hypot(G.player.x - v.x, G.player.z - v.z) < 25) ai.honk = 1;
+  if (ai.blocked > 2.5 && ai.blocked - dt <= 2.5 && Math.hypot(G.player.x - v.x, G.player.z - v.z) < 25) sfx.horn();
   // unstick: back up when wedged against something
   if (Math.abs(v.speed) < 0.4 && want > 0) ai.stuck += dt; else ai.stuck = Math.max(0, ai.stuck - dt);
   if (ai.stuck > 2.5) ai.reverse = 1.4;

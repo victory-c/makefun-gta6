@@ -204,6 +204,12 @@ export function populatePeds() {
   for (let k = 0; k < RULES.pedCount; k++) spawnCivNear(p.x, p.z, 8, 110);
 }
 
+// Fill the sidewalks close to a point (used when the player arrives somewhere new).
+export function crowdAround(x, z, n, minD = 8, maxD = 55) {
+  for (const q of [...G.peds]) if (q.kind === 'civ' && Math.hypot(q.x - x, q.z - z) > 150) q.remove();
+  for (let k = 0; k < n; k++) spawnCivNear(x, z, minD, maxD);
+}
+
 export function updatePeds(dt) {
   const p = G.player;
   const civs = G.peds.filter((q) => q.kind === 'civ');
