@@ -6,6 +6,10 @@ import { clamp } from '../core/rng.js';
 import { fx } from '../gameplay/effects.js';
 import { sfx } from '../core/audio.js';
 import { mergeParts } from '../world/meshBuilder.js';
+import { softDot } from '../world/textures.js';
+
+let haloTexture = null;
+const haloTex = () => (haloTexture ??= softDot());
 
 export const VEHICLE_TYPES = {
   compact: { name: 'Brisa', len: 3.9, w: 1.8, h: 1.45, max: 36, accel: 10, grip: 8, hp: 900, mass: 1 },
@@ -96,6 +100,14 @@ export function buildCarMesh(typeId, color) {
     const red = new THREE.Mesh(bar, new THREE.MeshBasicMaterial({ color: 0x550000 }));
     const blue = new THREE.Mesh(bar, new THREE.MeshBasicMaterial({ color: 0x001655 }));
     red.position.set(-0.35, 0.32 + g.H + 0.14, g.cabinZ); blue.position.set(0.35, 0.32 + g.H + 0.14, g.cabinZ);
+    // additive glow halos make the flashing lights readable from far away
+    for (const [m, c] of [[red, 0xff2020], [blue, 0x2a6bff]]) {
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: c, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+      halo.scale.setScalar(2.6);
+      halo.visible = false;
+      m.add(halo);
+      m.userData.halo = halo;
+    }
     body.add(red, blue);
     lightbar = [red, blue];
   }
@@ -232,6 +244,8 @@ export class Vehicle {
       const on = this.sirenOn && Math.floor(G.time * 6) % 2 === 0;
       u.lightbar[0].material.color.setHex(this.sirenOn ? (on ? 0xff2a2a : 0x330000) : 0x550000);
       u.lightbar[1].material.color.setHex(this.sirenOn ? (on ? 0x001133 : 0x2a6bff) : 0x001655);
+      u.lightbar[0].userData.halo.visible = this.sirenOn && on;
+      u.lightbar[1].userData.halo.visible = this.sirenOn && !on;
     }
     if (this.dead && this.burn > 0) {
       this.burn -= dt;

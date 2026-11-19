@@ -1,6 +1,6 @@
 // Rotating radar minimap and the full-screen island map, both drawn from one pre-rendered city image.
 import { G } from '../core/state.js';
-import { CITY } from '../config.js';
+import { CITY, DISTRICTS } from '../config.js';
 import { layout, roadAt } from '../world/cityLayout.js';
 import { blips } from '../gameplay/markers.js';
 
@@ -133,6 +133,21 @@ export function drawBigMap(canvas) {
   const offX = (W - base.width * k) / 2, offY = (H - base.height * k) / 2;
   g.drawImage(base, offX, offY, base.width * k, base.height * k);
   const toScreen = (x, z) => [offX + (x - ox) * PX * k, offY + (z - oz) * PX * k];
+  // district names
+  g.textAlign = 'center';
+  g.font = 'italic bold 15px Georgia, serif';
+  for (const d of DISTRICTS) {
+    const [sx, sy] = toScreen(((d.x0 + Math.min(d.x1, 1)) / 2) * CITY.half, ((d.z0 + d.z1) / 2) * CITY.half);
+    g.lineWidth = 4; g.strokeStyle = 'rgba(40,10,40,0.8)'; g.strokeText(d.name, sx, sy);
+    g.fillStyle = '#ffe0f0'; g.fillText(d.name, sx, sy);
+  }
+  const [bx, by] = toScreen((layout.beach.x0 + layout.beach.x1) / 2, 0);
+  g.save(); g.translate(bx, by); g.rotate(Math.PI / 2);
+  g.strokeText('FLAMINGO · PELICAN SANDS BEACH', 0, 0); g.fillText('FLAMINGO · PELICAN SANDS BEACH', 0, 0);
+  g.restore();
+  g.font = 'bold 26px Arial Black, Impact, sans-serif';
+  g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 5;
+  g.strokeText('PALMERA BAY', W / 2, 34); g.fillText('PALMERA BAY', W / 2, 34);
   g.font = 'bold 12px Arial'; g.textAlign = 'center';
   for (const b of blips()) {
     const [sx, sy] = toScreen(b.x, b.z);

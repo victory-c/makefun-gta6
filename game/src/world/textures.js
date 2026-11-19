@@ -98,7 +98,7 @@ export function sidewalk() {
 
 export function sand() {
   const [c, g] = canvas(256, 256);
-  noiseFill(g, 256, 256, '#f0d9a8', 50, 11, 12000);
+  noiseFill(g, 256, 256, '#dcbb86', 60, 11, 14000);
   return toTexture(c);
 }
 

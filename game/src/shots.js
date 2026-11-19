@@ -25,7 +25,7 @@ const SCENES = {
       const car = spawnVehicle('sports', x, -170, 0, 0xff3d8b);
       enterVehicle(car);
       car.vx = 0; car.vz = 26; car.speed = 26;
-      for (const [dx, dz] of [[2.5, -16], [-1.5, -27], [1, -40]]) {
+      for (const [dx, dz] of [[2.6, -9], [-1.8, -16], [1.5, -25]]) {
         const c = spawnVehicle('police', x + dx, -170 + dz, 0);
         c.driver = 'cop'; c.sirenOn = true; c.ai = { cop: true, ti: 8, tj: 2 };
         c.vz = 27; c.speed = 27;
@@ -40,7 +40,7 @@ const SCENES = {
       cam.yaw = Math.PI + 0.4;
       simulateKey('KeyW', true);
     },
-    camera() { cam.yaw = Math.PI + 0.42; cam.pitch = 0.1; },
+    camera() { cam.yaw = Math.PI + 0.55; cam.pitch = 0.04; cam.view = 3; },
   },
   // On foot on Pelican Sands, pistol drawn against the Gold Tide crew.
   beach: {
@@ -49,20 +49,20 @@ const SCENES = {
       G.storyStep = 3; G.money = 6120; G.godMode = true;
       G.weapons.pistol = 48; G.weaponIndex = 1;
       const p = G.player;
-      p.x = layout.beach.x0 + 16; p.z = 132;
+      p.x = layout.beach.x0 + 24; p.z = 196; p.h = Math.PI;
       startMission(STORY[3]);
       G.mission.idx = 0;
       G.mission.stage = { text: '', update: () => undefined };
       const gang = [];
-      for (const [dx, dz] of [[4, 11], [9, 15], [12, 9], [6, 19], [15, 16]]) gang.push(spawnPed('gang', p.x + dx, p.z + dz, { tag: 'gold' }));
+      for (const [dx, dz] of [[-3, -10], [2, -14], [-6, -12], [4, -19], [-1, -17]]) gang.push(spawnPed('gang', p.x + dx, p.z + dz, { tag: 'gold' }));
       gang[1].hurt(999, p.x, p.z, false); gang[3].hurt(999, p.x, p.z, false);
       for (const q of gang) q.fire = 0.9 + Math.random();
       hud.objective('Take out the Gold Tide crew (2/5)');
       setWanted(1);
-      cam.yaw = 0.62; cam.pitch = 0.26; cam.view = 1;
+      cam.yaw = Math.PI + 0.25; cam.pitch = -0.04; cam.view = 0;
     },
     input(i) { if (i === 68) mouse.leftPressed = true; },
-    camera() { cam.yaw = 0.62; cam.pitch = 0.26; },
+    camera() { cam.yaw = Math.PI + 0.25; cam.pitch = -0.04; },
   },
   // Rush hour downtown: driving among traffic with towers overhead.
   downtown: {
