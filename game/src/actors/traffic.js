@@ -2,7 +2,7 @@
 // queue behind obstacles and get unstuck. Also exports steering helpers the police reuse.
 import { G } from '../core/state.js';
 import { CITY, PALETTE, RULES } from '../config.js';
-import { rng, clamp, angleDiff } from '../core/rng.js';
+import { rng, clamp, angleDiff, makeRng } from '../core/rng.js';
 import { nodePos, roadAt } from '../world/cityLayout.js';
 import { spawnVehicle } from './vehicles.js';
 
@@ -123,6 +123,7 @@ export function updateTraffic(dt) {
   }
   for (const v of [...G.vehicles]) {
     if (v.driver === 'ai' && v.ai && !v.dead) aiDrive(v, dt);
+    else if (v.parked && Math.abs(v.vx) + Math.abs(v.vz) < 0.01) { /* resting at the curb */ }
     else if (v.driver !== 'player' && v.driver !== 'cop' && !v.ai?.custom) v.drive(dt, { throttle: 0, steer: 0, brake: true });
     const d = Math.hypot(v.x - p.x, v.z - p.z);
     if (v !== p.inCar && !v.mission && v !== p.lastCar && (d > 240 || (v.dead && v.burn <= 0 && d > 80))) v.remove();
@@ -133,5 +134,43 @@ export function populateTraffic() {
   for (let k = 0; k < RULES.trafficCount; k++) {
     const i = rng.int(0, CITY.roads - 1), j = rng.int(0, CITY.roads - 1);
     spawnOnLane(i, j, undefined, 'ai', rng.range(10, 50));
+  }
+}
+
+// Cars parked along the curbs: fixed slots streamed in and out around the player.
+const parkedSlots = [];
+function buildParkedSlots() {
+  const r = makeRng(99);
+  const curb = CITY.road / 2 - 1.3;
+  for (let line = 0; line < CITY.roads; line++) {
+    for (let s = 0; s < CITY.roads - 1; s++) {
+      const a = roadAt(s) + CITY.road / 2 + 7, b = roadAt(s + 1) - CITY.road / 2 - 7;
+      for (let t = a; t < b; t += 7) {
+        if (!r.chance(0.22)) continue;
+        const side = r.chance(0.5) ? 1 : -1;
+        const type = r.pick(['sedan', 'compact', 'suv', 'pickup', 'sports', 'compact']);
+        const color = r.pick(PALETTE.car);
+        // along x (z = road line) and along z (x = road line)
+        parkedSlots.push({ x: t, z: roadAt(line) + side * curb, h: side > 0 ? Math.PI / 2 : -Math.PI / 2, type, color, car: null });
+        if (r.chance(0.5)) parkedSlots.push({ x: roadAt(line) + side * curb, z: t, h: side > 0 ? Math.PI : 0, type, color, car: null });
+      }
+    }
+  }
+}
+
+export function updateParked() {
+  if (!parkedSlots.length) buildParkedSlots();
+  const p = G.player;
+  for (const s of parkedSlots) {
+    const d = Math.hypot(s.x - p.x, s.z - p.z);
+    if (s.car) {
+      const moved = s.car.driver || s.car.dead || Math.hypot(s.car.x - s.x, s.car.z - s.z) > 3 || !G.vehicles.includes(s.car);
+      if (moved) { s.car.parked = false; s.car = null; s.used = true; }           // stolen or shoved: the slot lets go
+      else if (d > 170) { s.car.remove(); s.car = null; }
+    } else if (d > 170) s.used = false;
+    else if (!s.used && d < 110 && d > 25) {
+      s.car = spawnVehicle(s.type, s.x, s.z, s.h, s.color);
+      s.car.parked = true;
+    }
   }
 }

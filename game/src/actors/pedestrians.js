@@ -224,6 +224,7 @@ export function updatePeds(dt) {
     const d = Math.hypot(q.x - p.x, q.z - p.z);
     if (q.kind === 'civ' && (d > 150 || (q.dead && G.time - q.deadTime > 25 && d > 50))) q.remove();
     if (q.kind === 'cop' && (d > 200 || (q.dead && G.time - q.deadTime > 30))) q.remove();
+    if (q.kind === 'gang' && q.tag !== 'gold' && (d > 220 || (q.dead && G.time - q.deadTime > 30))) q.remove();
   }
   hitByVehicles();
 }

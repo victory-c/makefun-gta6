@@ -64,26 +64,29 @@ const SCENES = {
     input(i) { if (i === 68) mouse.leftPressed = true; },
     camera() { cam.yaw = Math.PI + 0.25; cam.pitch = -0.04; },
   },
-  // Rush hour downtown: driving among traffic with towers overhead.
+  // Rush hour in Midtown Palms: driving among traffic past pastel art-deco blocks.
   downtown: {
     frames: 90,
     setup() {
       G.storyStep = 2; G.money = 2740;
-      const x = roadAt(4) + CITY.laneOffset, z = roadAt(5) - 20;
-      const car = spawnVehicle('suv', x, z, Math.PI, 0x1d70a2);
+      const z = roadAt(2) - CITY.laneOffset, x = roadAt(5) - 14;
+      const car = spawnVehicle('suv', x, z, -Math.PI / 2, 0x1d70a2);
       enterVehicle(car);
-      car.vz = -14; car.speed = 14;
+      car.vx = -12; car.speed = 12;
+      const kinds = ['taxi', 'sedan', 'compact', 'sports', 'pickup', 'sedan'];
+      const cols = [0xffc20e, 0xe63946, 0xf1faee, 0xffb703, 0x2a9d8f, 0x8338ec];
       for (let k = 0; k < 6; k++) {
-        const t = spawnVehicle(['taxi', 'sedan', 'compact', 'sports', 'pickup', 'sedan'][k], roadAt(4) + (k % 2 ? -CITY.laneOffset : CITY.laneOffset), z - 14 - k * 13, k % 2 ? 0 : Math.PI, [0xffc20e, 0xe63946, 0xf1faee, 0xffb703, 0x2a9d8f, 0x8338ec][k]);
+        const west = k % 2 === 0;
+        const t = spawnVehicle(kinds[k], x - 16 - k * 12, roadAt(2) + (west ? -CITY.laneOffset : CITY.laneOffset), west ? -Math.PI / 2 : Math.PI / 2, cols[k]);
         t.driver = 'ai';
-        t.ai = k % 2 ? makeAi(4, 4, 4, 5) : makeAi(4, 5, 4, 4);
+        t.ai = west ? makeAi(5, 2, 4, 2) : makeAi(3, 2, 4, 2);
       }
       startMission(STORY[2]);
-      cam.yaw = Math.PI;
+      cam.yaw = -Math.PI / 2;
       simulateKey('KeyW', true);
     },
     input(i) { simulateKey('KeyW', i < 50); },
-    camera() { cam.yaw = Math.PI - 0.5; cam.pitch = 0.3; cam.view = 1; },
+    camera() { cam.yaw = -Math.PI / 2 + 0.45; cam.pitch = 0.22; cam.view = 1; },
   },
   map: {
     frames: 30,
