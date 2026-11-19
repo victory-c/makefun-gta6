@@ -28,6 +28,13 @@ export function showPause(onResume, onQuit) {
   G.mode = 'paused';
   $('menu').classList.remove('hidden');
   buttons([['RESUME', onResume], ['TITLE SCREEN', onQuit]]);
+  const s = G.stats;
+  const box = $('menuItems');
+  const info = document.createElement('div');
+  info.className = 'stats';
+  info.innerHTML = `<b>Story</b> ${G.storyStep}/5 &nbsp; <b>Races won</b> ${s.races} &nbsp; <b>Cars stolen</b> ${s.carsStolen}<br>`
+    + `<b>Takedowns</b> ${s.kills} &nbsp; <b>Seashells</b> ${G.shells.length}/12 &nbsp; <b>Cash</b> $${G.money.toLocaleString()}`;
+  box.appendChild(info);
 }
 
 export function hideMenu() {

@@ -64,12 +64,12 @@ export class Ped {
       this.dead = true; this.deadTime = G.time; this.state = 'dead';
       if (byPlayer) {
         G.stats.kills++;
-        emit(this.kind === 'cop' ? 'cop_killed' : 'ped_killed', { x: this.x, z: this.z, ped: this });
+        emit(this.kind === 'cop' ? 'cop_killed' : this.kind === 'gang' ? 'gang_killed' : 'ped_killed', { x: this.x, z: this.z, ped: this });
       }
       G.onPedKilled?.(this, byPlayer);
     } else {
       if (this.kind === 'civ') this.flee(fromX, fromZ);
-      if (byPlayer) emit(this.kind === 'cop' ? 'cop_hurt' : 'assault', { x: this.x, z: this.z });
+      if (byPlayer) emit(this.kind === 'cop' ? 'cop_hurt' : this.kind === 'gang' ? 'gunshot' : 'assault', { x: this.x, z: this.z });
     }
   }
 
@@ -157,6 +157,7 @@ export class Ped {
 
   remove() {
     G.scene.remove(this.mesh);
+    this.mesh.userData.head.geometry.dispose();
     const i = G.peds.indexOf(this);
     if (i >= 0) G.peds.splice(i, 1);
   }

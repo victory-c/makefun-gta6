@@ -5,6 +5,7 @@ import { collideCircle, groundY } from '../world/cityLayout.js';
 import { clamp } from '../core/rng.js';
 import { fx } from '../gameplay/effects.js';
 import { sfx } from '../core/audio.js';
+import { mergeParts } from '../world/meshBuilder.js';
 
 export const VEHICLE_TYPES = {
   compact: { name: 'Brisa', len: 3.9, w: 1.8, h: 1.45, max: 36, accel: 10, grip: 8, hp: 900, mass: 1 },
@@ -17,14 +18,13 @@ export const VEHICLE_TYPES = {
   van: { name: 'Bulwark Armored', len: 5.8, w: 2.4, h: 2.6, max: 34, accel: 8, grip: 7, hp: 3200, mass: 2.4, color: 0x5b6770 },
 };
 
-const glassMat = new THREE.MeshStandardMaterial({ color: 0x1b2a38, roughness: 0.1, metalness: 0.6 });
-const tireMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9 });
-const rimMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 0.7, roughness: 0.3 });
-const headMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2c0, emissiveIntensity: 0.8 });
-const tailMat = new THREE.MeshStandardMaterial({ color: 0xaa0000, emissive: 0xff1a1a, emissiveIntensity: 0.6 });
+const glassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.2, metalness: 0.5 });
+const lampMat = new THREE.MeshBasicMaterial({ vertexColors: true });
+const wheelMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0.3 });
 const burntMat = new THREE.MeshStandardMaterial({ color: 0x1c1a19, roughness: 1 });
 const wheelGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.26, 12); wheelGeo.rotateZ(Math.PI / 2);
 const rimGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.28, 8); rimGeo.rotateZ(Math.PI / 2);
+const wheelMerged = mergeParts([{ geo: wheelGeo, color: 0x161616 }, { geo: rimGeo, color: 0xd8d8d8 }]);
 
 function taperedBox(w, h, d, topW, topD, shiftZ) {
   const g = new THREE.BoxGeometry(w, h, d);
@@ -36,55 +36,75 @@ function taperedBox(w, h, d, topW, topD, shiftZ) {
   return g;
 }
 
-export function buildCarMesh(typeId, color) {
+// Per-type merged geometry: paint shell, glass + trim, lamps. Built once, shared by every car of that type.
+const geoCache = new Map();
+function carGeometry(typeId) {
+  if (geoCache.has(typeId)) return geoCache.get(typeId);
   const t = VEHICLE_TYPES[typeId];
-  const root = new THREE.Group();
-  const body = new THREE.Group();
-  root.add(body);
-  const paint = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.35 });
-  const add = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; body.add(o); return o; };
   const L = t.len, W = t.w, H = t.h;
   const lowH = H * (typeId === 'van' ? 0.75 : 0.45);
-  add(taperedBox(W, lowH, L, 0.97, 0.97, 0), paint, 0, 0.32 + lowH / 2, 0);
   let cabinLen = L * 0.5, cabinZ = -L * 0.05;
   if (typeId === 'sports') { cabinLen = L * 0.4; cabinZ = -L * 0.08; }
   if (typeId === 'pickup') { cabinLen = L * 0.32; cabinZ = L * 0.08; }
   if (typeId === 'van') { cabinLen = L * 0.25; cabinZ = L * 0.33; }
   const cabH = H - lowH;
-  add(taperedBox(W * 0.9, cabH, cabinLen, 0.86, typeId === 'sports' ? 0.55 : 0.75, typeId === 'sports' ? -0.12 : -0.04), glassMat, 0, 0.32 + lowH + cabH / 2, cabinZ);
-  add(new THREE.BoxGeometry(W * 0.76, 0.06, cabinLen * 0.62), paint, 0, 0.32 + H + 0.01, cabinZ - (typeId === 'sports' ? 0.3 : 0.05));
-  if (typeId === 'van') add(new THREE.BoxGeometry(W, H * 0.25, L * 0.68), paint, 0, 0.32 + lowH + H * 0.12, -L * 0.15);
-  if (typeId === 'pickup') add(new THREE.BoxGeometry(W * 0.96, 0.4, L * 0.4), paint, 0, 0.32 + lowH + 0.2, -L * 0.28).scale.set(1, 1, 1);
-  // lights
-  for (const s of [-1, 1]) {
-    add(new THREE.BoxGeometry(0.42, 0.14, 0.05), headMat, s * (W / 2 - 0.35), 0.32 + lowH * 0.7, L / 2 + 0.01);
-    add(new THREE.BoxGeometry(0.4, 0.14, 0.05), tailMat, s * (W / 2 - 0.33), 0.32 + lowH * 0.75, -L / 2 - 0.01);
-  }
-  // bumpers + side stripe
-  const trim = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.6 });
-  add(new THREE.BoxGeometry(W * 1.01, 0.16, 0.18), trim, 0, 0.42, L / 2);
-  add(new THREE.BoxGeometry(W * 1.01, 0.16, 0.18), trim, 0, 0.42, -L / 2);
+  const paint = [
+    { geo: taperedBox(W, lowH, L, 0.97, 0.97, 0), y: 0.32 + lowH / 2 },
+    { geo: new THREE.BoxGeometry(W * 0.76, 0.06, cabinLen * 0.62), y: 0.32 + H + 0.01, z: cabinZ - (typeId === 'sports' ? 0.3 : 0.05) },
+    // hood bulge and side skirts give the silhouette some shape
+    { geo: taperedBox(W * 0.8, 0.08, L * 0.28, 0.85, 0.9, 0), y: 0.32 + lowH + 0.03, z: L * 0.3 },
+  ];
+  if (typeId === 'van') paint.push({ geo: new THREE.BoxGeometry(W, H * 0.25, L * 0.68), y: 0.32 + lowH + H * 0.12, z: -L * 0.15 });
+  if (typeId === 'pickup') paint.push({ geo: new THREE.BoxGeometry(W * 0.96, 0.4, L * 0.4), y: 0.32 + lowH + 0.2, z: -L * 0.28 });
+  if (typeId === 'sports') paint.push({ geo: new THREE.BoxGeometry(W * 0.9, 0.06, 0.4), y: 0.32 + lowH + 0.35, z: -L / 2 + 0.25 });
+  const trim = [
+    { geo: taperedBox(W * 0.9, cabH, cabinLen, 0.86, typeId === 'sports' ? 0.55 : 0.75, typeId === 'sports' ? -0.12 : -0.04), y: 0.32 + lowH + cabH / 2, z: cabinZ, color: 0x1b2a38 },
+    { geo: new THREE.BoxGeometry(W * 1.01, 0.16, 0.18), y: 0.42, z: L / 2, color: 0x2a2a2a },
+    { geo: new THREE.BoxGeometry(W * 1.01, 0.16, 0.18), y: 0.42, z: -L / 2, color: 0x2a2a2a },
+    { geo: new THREE.BoxGeometry(W * 1.012, 0.1, L * 0.62), y: 0.38, z: 0, color: 0x222222 },
+  ];
+  if (typeId === 'sports') trim.push({ geo: new THREE.BoxGeometry(0.08, 0.3, 0.08), y: 0.32 + lowH + 0.18, z: -L / 2 + 0.25, color: 0x222222 });
   if (typeId === 'police') {
-    const white = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.4 });
-    add(new THREE.BoxGeometry(W * 1.005, lowH * 0.55, L * 0.42), white, 0, 0.32 + lowH * 0.55, -L * 0.03);
+    trim.push({ geo: new THREE.BoxGeometry(W * 1.005, lowH * 0.55, L * 0.42), y: 0.32 + lowH * 0.55, z: -L * 0.03, color: 0xf4f4f4 });
+    trim.push({ geo: new THREE.BoxGeometry(1.6, 0.08, 0.36), y: 0.32 + H + 0.04, z: cabinZ, color: 0x222222 });
   }
-  if (typeId === 'taxi') {
-    add(new THREE.BoxGeometry(0.8, 0.25, 0.3), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffe9a0, emissiveIntensity: 0.5 }), 0, 0.32 + H + 0.16, cabinZ);
-    add(new THREE.BoxGeometry(W * 1.01, 0.12, L * 0.9), trim, 0, 0.32 + lowH * 0.55, 0);
+  if (typeId === 'taxi') trim.push({ geo: new THREE.BoxGeometry(W * 1.01, 0.12, L * 0.9), y: 0.32 + lowH * 0.55, z: 0, color: 0x222222 });
+  const lamps = [];
+  for (const s of [-1, 1]) {
+    lamps.push({ geo: new THREE.BoxGeometry(0.42, 0.14, 0.05), x: s * (W / 2 - 0.35), y: 0.32 + lowH * 0.7, z: L / 2 + 0.01, color: 0xfff6dc });
+    lamps.push({ geo: new THREE.BoxGeometry(0.4, 0.14, 0.05), x: s * (W / 2 - 0.33), y: 0.32 + lowH * 0.75, z: -L / 2 - 0.01, color: 0xff2020 });
   }
+  if (typeId === 'taxi') lamps.push({ geo: new THREE.BoxGeometry(0.8, 0.25, 0.3), y: 0.32 + H + 0.16, z: cabinZ, color: 0xfff1b0 });
+  const out = { paint: mergeParts(paint), trim: mergeParts(trim), lamps: mergeParts(lamps), H, cabinZ, L, W };
+  geoCache.set(typeId, out);
+  return out;
+}
+
+export function buildCarMesh(typeId, color) {
+  const g = carGeometry(typeId);
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const paint = new THREE.MeshStandardMaterial({ color, vertexColors: true, roughness: 0.32, metalness: 0.4 });
+  const add = (geo, m) => { const o = new THREE.Mesh(geo, m); o.castShadow = true; body.add(o); return o; };
+  add(g.paint, paint);
+  add(g.trim, glassMat);
+  add(g.lamps, lampMat).castShadow = false;
   let lightbar = null;
   if (typeId === 'police') {
-    const red = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.3 });
-    const blue = new THREE.MeshStandardMaterial({ color: 0x0044ff, emissive: 0x0044ff, emissiveIntensity: 0.3 });
-    lightbar = [add(new THREE.BoxGeometry(0.6, 0.16, 0.3), red, -0.35, 0.32 + H + 0.1, cabinZ), add(new THREE.BoxGeometry(0.6, 0.16, 0.3), blue, 0.35, 0.32 + H + 0.1, cabinZ)];
+    const bar = new THREE.BoxGeometry(0.6, 0.16, 0.3);
+    const red = new THREE.Mesh(bar, new THREE.MeshBasicMaterial({ color: 0x550000 }));
+    const blue = new THREE.Mesh(bar, new THREE.MeshBasicMaterial({ color: 0x001655 }));
+    red.position.set(-0.35, 0.32 + g.H + 0.14, g.cabinZ); blue.position.set(0.35, 0.32 + g.H + 0.14, g.cabinZ);
+    body.add(red, blue);
+    lightbar = [red, blue];
   }
   const wheels = [];
   for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
     const w = new THREE.Group();
-    const tire = new THREE.Mesh(wheelGeo, tireMat); tire.castShadow = true;
-    const rim = new THREE.Mesh(rimGeo, rimMat);
-    w.add(tire, rim);
-    w.position.set(sx * (W / 2 - 0.12), 0.36, sz * (L / 2 - 0.85));
+    const tire = new THREE.Mesh(wheelMerged, wheelMat); tire.castShadow = true;
+    w.add(tire);
+    w.position.set(sx * (g.W / 2 - 0.12), 0.36, sz * (g.L / 2 - 0.85));
     root.add(w);
     wheels.push(w);
   }
@@ -210,8 +230,8 @@ export class Vehicle {
     }
     if (u.lightbar) {
       const on = this.sirenOn && Math.floor(G.time * 6) % 2 === 0;
-      u.lightbar[0].material.emissiveIntensity = this.sirenOn ? (on ? 3 : 0.2) : 0.3;
-      u.lightbar[1].material.emissiveIntensity = this.sirenOn ? (on ? 0.2 : 3) : 0.3;
+      u.lightbar[0].material.color.setHex(this.sirenOn ? (on ? 0xff2a2a : 0x330000) : 0x550000);
+      u.lightbar[1].material.color.setHex(this.sirenOn ? (on ? 0x001133 : 0x2a6bff) : 0x001655);
     }
     if (this.dead && this.burn > 0) {
       this.burn -= dt;

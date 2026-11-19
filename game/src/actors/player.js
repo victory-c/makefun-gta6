@@ -10,7 +10,7 @@ import { ejectDriver } from './pedestrians.js';
 import { sfx } from '../core/audio.js';
 
 export function createPlayer(x, z) {
-  const mesh = buildHuman({ skin: 0xc68642, shirt: 0xff5d8f, pants: 0x1f3b57, hair: 0x1a0f0a, cap: 0xffffff });
+  const mesh = buildHuman({ skin: 0xc68642, shirt: 0xff5d8f, pants: 0x1f3b57, hair: 0x1a0f0a, cap: 0xffffff, shades: true });
   G.scene.add(mesh);
   const p = {
     x, z, y: 0, vy: 0, h: 0, speed: 0, mesh, inCar: null, lastCar: null,

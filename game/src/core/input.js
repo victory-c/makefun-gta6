@@ -22,7 +22,7 @@ export function initInput(canvas) {
   });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   addEventListener('mousemove', (e) => {
-    if (mouse.locked) { mouse.dx += e.movementX; mouse.dy += e.movementY; }
+    if (mouse.locked || e.buttons) { mouse.dx += e.movementX; mouse.dy += e.movementY; }
   });
   addEventListener('wheel', (e) => { mouse.wheel += Math.sign(e.deltaY); });
   document.addEventListener('pointerlockchange', () => { mouse.locked = document.pointerLockElement === canvas; });

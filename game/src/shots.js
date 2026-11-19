@@ -20,27 +20,27 @@ const SCENES = {
   chase: {
     frames: 110,
     setup() {
-      G.storyStep = 4; G.money = 18450; G.weaponIndex = 1;
-      const x = roadAt(8) + CITY.laneOffset - 7.2;
-      const car = spawnVehicle('sports', x, 150, Math.PI, 0xff3d8b);
+      G.storyStep = 4; G.money = 18450; G.weaponIndex = 1; G.camLock = true;
+      const x = roadAt(8) - CITY.laneOffset;
+      const car = spawnVehicle('sports', x, -170, 0, 0xff3d8b);
       enterVehicle(car);
-      car.vx = 0; car.vz = -24; car.speed = 24;
-      for (const [dx, dz] of [[-3, 22], [3.5, 34], [-1, 50]]) {
-        const c = spawnVehicle('police', x + dx, 150 + dz, Math.PI);
-        c.driver = 'cop'; c.sirenOn = true; c.ai = { cop: true, ti: 8, tj: 1 };
-        c.vz = -26; c.speed = 26;
+      car.vx = 0; car.vz = 26; car.speed = 26;
+      for (const [dx, dz] of [[2.5, -16], [-1.5, -27], [1, -40]]) {
+        const c = spawnVehicle('police', x + dx, -170 + dz, 0);
+        c.driver = 'cop'; c.sirenOn = true; c.ai = { cop: true, ti: 8, tj: 2 };
+        c.vz = 27; c.speed = 27;
       }
+      // clear the lane ahead so the chase stays on Ocean Drive
+      for (const v of [...G.vehicles]) if (v.driver === 'ai' && Math.abs(v.x - x) < 9 && v.z > -170 && v.z < 0) v.remove();
       setWanted(3);
       G.copsSee = true;
       startMission(STORY[4]);
       G.mission.idx = 2;
-      hud.objective('Lose the cops and stash the cash at the safehouse');
-      hud.say('Jolene Park', 'Three cruisers on your tail. Cut through the beach!', 6, 2.6);
-      cam.yaw = Math.PI;
+      hud.say('Jolene Park', 'Three cruisers on your tail. Lose them before the safehouse!', 6, 2.6);
+      cam.yaw = Math.PI + 0.4;
       simulateKey('KeyW', true);
     },
-    input(i) { simulateKey('KeyA', i > 60 && i < 75); },
-    camera() { cam.yaw = Math.PI + 0.38; cam.pitch = 0.16; },
+    camera() { cam.yaw = Math.PI + 0.42; cam.pitch = 0.1; },
   },
   // On foot on Pelican Sands, pistol drawn against the Gold Tide crew.
   beach: {
@@ -49,21 +49,20 @@ const SCENES = {
       G.storyStep = 3; G.money = 6120; G.godMode = true;
       G.weapons.pistol = 48; G.weaponIndex = 1;
       const p = G.player;
-      p.x = layout.beach.x0 + 20; p.z = 132;
+      p.x = layout.beach.x0 + 16; p.z = 132;
       startMission(STORY[3]);
       G.mission.idx = 0;
       G.mission.stage = { text: '', update: () => undefined };
       const gang = [];
-      for (const [dx, dz] of [[-6, 24], [3, 28], [9, 21], [-2, 33], [6, 36]]) gang.push(spawnPed('gang', p.x + dx, p.z + dz, { tag: 'gold' }));
+      for (const [dx, dz] of [[4, 11], [9, 15], [12, 9], [6, 19], [15, 16]]) gang.push(spawnPed('gang', p.x + dx, p.z + dz, { tag: 'gold' }));
       gang[1].hurt(999, p.x, p.z, false); gang[3].hurt(999, p.x, p.z, false);
       for (const q of gang) q.fire = 0.9 + Math.random();
       hud.objective('Take out the Gold Tide crew (2/5)');
       setWanted(1);
-      cam.yaw = 0.1; cam.pitch = 0.08;
-      mouse.right = true;
+      cam.yaw = 0.62; cam.pitch = 0.26; cam.view = 1;
     },
-    input(i) { if (i === 64) mouse.leftPressed = true; },
-    camera() { cam.yaw = 0.12; cam.pitch = 0.05; },
+    input(i) { if (i === 68) mouse.leftPressed = true; },
+    camera() { cam.yaw = 0.62; cam.pitch = 0.26; },
   },
   // Rush hour downtown: driving among traffic with towers overhead.
   downtown: {
@@ -84,7 +83,7 @@ const SCENES = {
       simulateKey('KeyW', true);
     },
     input(i) { simulateKey('KeyW', i < 50); },
-    camera() { cam.yaw = Math.PI - 0.5; cam.pitch = 0.3; },
+    camera() { cam.yaw = Math.PI - 0.5; cam.pitch = 0.3; cam.view = 1; },
   },
   map: {
     frames: 30,
@@ -104,6 +103,7 @@ const SCENES = {
 export function runShot(name, api) {
   const sc = SCENES[name] ?? SCENES.chase;
   reseed(42);
+  G.camLock = true;
   api.startPlay();
   sc.setup();
   const dt = 1 / 30;

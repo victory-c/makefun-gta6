@@ -1,5 +1,6 @@
 // Low-poly people: one builder for the player, pedestrians, gang members and police.
 import * as THREE from 'three';
+import { mergeParts } from '../world/meshBuilder.js';
 
 const geo = {
   torso: new THREE.BoxGeometry(0.52, 0.62, 0.3),
@@ -17,41 +18,45 @@ function mat(hex) {
   if (!matCache.has(hex)) matCache.set(hex, new THREE.MeshStandardMaterial({ color: hex, roughness: 0.8 }));
   return matCache.get(hex);
 }
+const skinMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8 });
+const handGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+const eyeGeo = new THREE.BoxGeometry(0.22, 0.05, 0.02);
+const armCache = new Map();
+function armGeo(shirt, skin) {
+  const k = shirt + ':' + skin;
+  if (!armCache.has(k)) armCache.set(k, mergeParts([{ geo: geo.arm, color: shirt }, { geo: handGeo, y: -0.62, color: skin }]));
+  return armCache.get(k);
+}
 
-// opts: { skin, shirt, pants, hair, cap, police }
+// opts: { skin, shirt, pants, hair, cap, police, shades }
 export function buildHuman(opts) {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
-  const part = (g, color, x, y, z) => {
-    const m = new THREE.Mesh(g, mat(color));
-    m.position.set(x, y, z);
-    m.castShadow = true;
-    body.add(m);
-    return m;
-  };
-  const torso = part(geo.torso, opts.shirt, 0, 1.25, 0);
-  part(geo.hips, opts.pants, 0, 0.88, 0);
-  const head = part(geo.head, opts.skin, 0, 1.75, 0);
-  part(geo.hair, opts.hair ?? 0x2b1d14, 0, 1.94, 0);
-  if (opts.cap) part(geo.cap, opts.cap, 0, 1.97, 0.05);
-  const legL = part(geo.limb, opts.pants, -0.13, 0.82, 0);
-  const legR = part(geo.limb, opts.pants, 0.13, 0.82, 0);
-  const armL = part(geo.arm, opts.shirt, -0.34, 1.52, 0);
-  const armR = part(geo.arm, opts.shirt, 0.34, 1.52, 0);
-  const handCol = opts.skin;
-  for (const a of [armL, armR]) {
-    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), mat(handCol));
-    hand.position.y = -0.62; a.add(hand);
-  }
+  // torso, hips, head, hair, cap and details merged into one mesh
+  const parts = [
+    { geo: geo.torso, y: 1.25, color: opts.shirt },
+    { geo: geo.hips, y: 0.88, color: opts.pants },
+    { geo: geo.head, y: 1.75, color: opts.skin },
+    { geo: geo.hair, y: 1.94, color: opts.hair ?? 0x2b1d14 },
+    { geo: eyeGeo, y: 1.79, z: 0.155, color: opts.shades ? 0x111111 : 0x2a1a10 },
+  ];
+  if (opts.cap) parts.push({ geo: geo.cap, y: 1.97, z: 0.05, color: opts.cap });
+  if (opts.police) parts.push({ geo: new THREE.BoxGeometry(0.1, 0.1, 0.02), x: -0.13, y: 1.37, z: 0.16, color: 0xffd23f });
+  if (opts.police) parts.push({ geo: new THREE.BoxGeometry(0.54, 0.08, 0.32), y: 0.98, color: 0x111111 });
+  const trunk = new THREE.Mesh(mergeParts(parts), skinMat);
+  trunk.castShadow = true;
+  body.add(trunk);
+  const limb = (g, m, x, y) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, 0); o.castShadow = true; body.add(o); return o; };
+  const legL = limb(geo.limb, mat(opts.pants), -0.13, 0.82);
+  const legR = limb(geo.limb, mat(opts.pants), 0.13, 0.82);
+  const arms = armGeo(opts.shirt, opts.skin);
+  const armL = limb(arms, skinMat, -0.34, 1.52);
+  const armR = limb(arms, skinMat, 0.34, 1.52);
   const gun = new THREE.Mesh(geo.gun, mat(0x1a1a1a));
   gun.position.set(0, -0.62, 0.15); gun.visible = false;
   armR.add(gun);
-  if (opts.police) {
-    const badge = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.02), mat(0xffd23f));
-    badge.position.set(-0.13, 0.12, 0.16); torso.add(badge);
-  }
-  root.userData = { body, legL, legR, armL, armR, head, gun, phase: Math.random() * 6 };
+  root.userData = { body, legL, legR, armL, armR, head: trunk, gun, phase: Math.random() * 6 };
   return root;
 }
 

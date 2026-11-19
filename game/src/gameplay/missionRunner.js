@@ -44,6 +44,7 @@ function passMission() {
   sfx.pass();
   hud.objective('');
   G.mission = null;
+  G.startBlocked = true;
   clearMarkers('m:');
   saveGame();
   G.onMissionPassed?.(def);
@@ -57,6 +58,7 @@ export function failMission(reason) {
   sfx.fail();
   hud.objective('');
   G.mission = null;
+  G.startBlocked = true;
   clearMarkers('m:');
 }
 
@@ -79,13 +81,20 @@ export function updateMissions(dt) {
   const m = G.mission;
   if (!m) {
     refreshStarts();
+    // after a mission ends, the player must step out of every start marker before another begins
+    if (G.startBlocked) {
+      const inside = [...STORY, ...SIDE_JOBS].some((d) => insideMarker('start:' + d.id, 1));
+      if (inside) return;
+      G.startBlocked = false;
+    }
     const next = STORY[G.storyStep];
-    if (next && insideMarker('start:' + next.id) && !G.player.dead) {
+    const reach = G.player.inCar ? 2.5 : 0;
+    if (next && insideMarker('start:' + next.id, reach) && !G.player.dead) {
       if (G.wanted > 0) hud.prompt('Lose the cops before starting a mission');
       else return startMission(next);
     }
     for (const j of SIDE_JOBS) {
-      if (!j.locked?.() && insideMarker('start:' + j.id) && !G.player.dead) {
+      if (!j.locked?.() && insideMarker('start:' + j.id, reach) && !G.player.dead) {
         const why = j.canStart?.();
         if (why) hud.prompt(why);
         else if (G.wanted > 0) hud.prompt('Lose the cops before starting a job');

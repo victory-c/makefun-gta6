@@ -47,6 +47,7 @@ function processCrimes() {
       case 'gunshot': addHeat(copNear(e.x, e.z, 60) ? 0.5 : 0.12); break;
       case 'assault': addHeat(0.35); break;
       case 'ped_killed': addHeat(1); break;
+      case 'gang_killed': addHeat(copNear(e.x, e.z, 50) ? 0.6 : 0.15); break;
       case 'cop_hurt': addHeat(G.wanted < 2 ? THRESH[1] - G.wantedHeat + 0.01 : 0.4); break;
       case 'cop_killed': addHeat(G.wanted < 3 ? THRESH[2] - G.wantedHeat + 0.01 : 1.6); break;
       case 'carjack': addHeat(copNear(e.x, e.z, 45) ? 1 : 0.45); break;

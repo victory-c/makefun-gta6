@@ -1,19 +1,19 @@
 // Golden-hour sky dome, sun with a shadow map that follows the player, and the animated ocean.
 import * as THREE from 'three';
 
-export const SUN_DIR = new THREE.Vector3(0.62, 0.42, 0.3).normalize();
+export const SUN_DIR = new THREE.Vector3(0.55, 0.9, 0.38).normalize();
 const HORIZON = new THREE.Color(0xffb38a);
 const ZENITH = new THREE.Color(0x3a6fb5);
 
 let sun, water, sky;
 
-export function buildSky(scene) {
+export function buildSky(scene, renderer) {
   scene.fog = new THREE.Fog(0xf3b99a, 160, 720);
   scene.background = HORIZON.clone();
 
-  const hemi = new THREE.HemisphereLight(0xcfe2ff, 0xa08060, 1.6);
+  const hemi = new THREE.HemisphereLight(0xe4ecff, 0xa08868, 0.7);
   scene.add(hemi);
-  sun = new THREE.DirectionalLight(0xffd7a8, 2.6);
+  sun = new THREE.DirectionalLight(0xffe2bf, 2.7);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   const s = sun.shadow.camera;
@@ -49,6 +49,20 @@ export function buildSky(scene) {
   sky.renderOrder = -1;
   scene.add(sky);
 
+  // image-based lighting from the same sky: reflections on glass towers, car paint and water
+  if (renderer) {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envScene = new THREE.Scene();
+    const envSky = sky.clone();
+    envScene.add(envSky);
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(1300, 24), new THREE.MeshBasicMaterial({ color: 0x8a7a68 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = -60;
+    envScene.add(ground);
+    scene.environment = pmrem.fromScene(envScene, 0.03, 0.1, 3000).texture;
+    scene.environmentIntensity = 0.85;
+    pmrem.dispose();
+  }
+
   water = new THREE.Mesh(
     new THREE.PlaneGeometry(3600, 3600, 1, 1),
     new THREE.ShaderMaterial({
@@ -62,9 +76,9 @@ export function buildSky(scene) {
           vec3 n = normalize(vec3(cos(p.x*0.09+time*1.1)*0.09, 1.0, cos(p.y*0.13-time*0.9)*0.12));
           vec3 viewDir = normalize(cameraPosition - vWorld);
           float fres = pow(1.0 - max(dot(n, viewDir), 0.0), 3.0);
-          vec3 deep = vec3(0.02,0.25,0.38), shallow = vec3(0.10,0.62,0.66);
+          vec3 deep = vec3(0.01,0.16,0.30), shallow = vec3(0.03,0.42,0.50);
           vec3 c = mix(deep, shallow, 0.35 + 0.1*w);
-          c = mix(c, vec3(1.0,0.72,0.55), fres*0.65);
+          c = mix(c, vec3(0.55,0.62,0.85), fres*0.35);
           vec3 r = reflect(-viewDir, n);
           c += vec3(1.0,0.75,0.45) * pow(max(dot(r, sunDir),0.0), 90.0) * 1.6;
           float d = length(cameraPosition - vWorld);

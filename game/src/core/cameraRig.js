@@ -1,11 +1,12 @@
 // Third-person camera: free orbit on foot, over-the-shoulder when aiming, speed-aware chase cam in cars.
 import * as THREE from 'three';
 import { G } from '../core/state.js';
-import { mouse } from '../core/input.js';
+import { mouse, hit } from './input.js';
 import { rayBuildings } from '../world/cityLayout.js';
 import { clamp, angleDiff } from '../core/rng.js';
 
-export const cam = { yaw: 0, pitch: 0.18, dist: 6, idle: 0, fov: 62, pos: new THREE.Vector3(), look: new THREE.Vector3() };
+export const cam = { yaw: 0, pitch: 0.18, dist: 6, idle: 0, fov: 62, view: 0, pos: new THREE.Vector3(), look: new THREE.Vector3() };
+const VIEW_SCALE = [1, 1.55, 2.2];   // V cycles near / mid / far chase distances
 const aim = new THREE.Vector3();
 G.aimDir = aim;
 
@@ -26,8 +27,8 @@ export function updateCamera(dt, snap = false) {
   if (p.inCar) {
     const v = p.inCar;
     const moveYaw = Math.abs(v.speed) > 1 ? (v.speed > 0 ? v.h : v.h) : v.h;
-    if (cam.idle > 1.0 || snap) cam.yaw += angleDiff(cam.yaw, moveYaw) * Math.min(1, dt * (snap ? 99 : 3.2));
-    if (cam.idle > 1.0) cam.pitch += (0.2 - cam.pitch) * Math.min(1, dt * 2);
+    if ((cam.idle > 1.0 && !G.camLock) || snap) cam.yaw += angleDiff(cam.yaw, moveYaw) * Math.min(1, dt * (snap ? 99 : 3.2));
+    if (cam.idle > 1.0 && !G.camLock) cam.pitch += (0.2 - cam.pitch) * Math.min(1, dt * 2);
     const sp = Math.abs(v.speed);
     dist = v.spec.len * 1.25 + 4.5 + sp * 0.06;
     height = v.spec.h + 1.6;
@@ -42,6 +43,8 @@ export function updateCamera(dt, snap = false) {
     cam.fov += ((aiming ? 52 : 62) - cam.fov) * Math.min(1, dt * 6);
   }
   if (G.deathCam) { dist = 9; height = 6; }
+  if (hit('KeyV')) cam.view = (cam.view + 1) % VIEW_SCALE.length;
+  if (!p.aiming) { dist *= VIEW_SCALE[cam.view]; height *= 0.7 + VIEW_SCALE[cam.view] * 0.3; }
   const fx = Math.sin(cam.yaw), fz = Math.cos(cam.yaw);
   const rx = -fz, rz = fx;
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);

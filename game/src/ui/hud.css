@@ -68,3 +68,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-f
   border: 2px solid #ff4fa3; cursor: pointer; text-shadow: 0 0 8px #ff4fa3; }
 #menuItems button:hover { background: #ff4fa3; color: #1a0612; }
 #menu .help { margin-top: 30px; font-size: 15px; max-width: 760px; text-align: center; background: rgba(0,0,0,.45); padding: 10px 16px; border-radius: 4px; }
+#menu .stats { margin-top: 10px; padding: 10px 16px; background: rgba(0,0,0,.55); font-size: 16px; line-height: 1.6; text-align: center; }
+#menu .stats b { color: #ffd23f; }
+#view.dead { filter: grayscale(0.85) contrast(1.15); }

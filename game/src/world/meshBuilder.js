@@ -45,3 +45,30 @@ export class MeshBuilder {
 }
 
 export const col = (hex) => new THREE.Color(hex);
+
+// Merge positioned primitive geometries into one geometry with per-part vertex colours.
+// parts: [{ geo, x, y, z, color }] — fewer meshes means fewer draw calls for cars and people.
+export function mergeParts(parts) {
+  const pos = [], nor = [], colr = [], idx = [];
+  let off = 0;
+  const c = new THREE.Color();
+  for (const p of parts) {
+    const gp = p.geo.attributes.position, gn = p.geo.attributes.normal;
+    c.set(p.color ?? 0xffffff);
+    for (let i = 0; i < gp.count; i++) {
+      pos.push(gp.getX(i) + (p.x ?? 0), gp.getY(i) + (p.y ?? 0), gp.getZ(i) + (p.z ?? 0));
+      nor.push(gn.getX(i), gn.getY(i), gn.getZ(i));
+      colr.push(c.r, c.g, c.b);
+    }
+    if (p.geo.index) for (let i = 0; i < p.geo.index.count; i++) idx.push(p.geo.index.getX(i) + off);
+    else for (let i = 0; i < gp.count; i++) idx.push(i + off);
+    off += gp.count;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(colr, 3));
+  g.setIndex(idx);
+  g.computeBoundingSphere();
+  return g;
+}

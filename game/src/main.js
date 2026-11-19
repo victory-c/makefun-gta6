@@ -35,7 +35,7 @@ function initRenderer() {
   r.shadowMap.enabled = true;
   r.shadowMap.type = THREE.PCFSoftShadowMap;
   r.toneMapping = THREE.ACESFilmicToneMapping;
-  r.toneMappingExposure = 1.05;
+  r.toneMappingExposure = 1.12;
   G.renderer = r;
   G.scene = new THREE.Scene();
   G.camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.3, 2400);
@@ -56,8 +56,9 @@ function parkedCars() {
 
 function buildWorld() {
   initRenderer();
+  initInput(canvas);
   generateLayout(7);
-  buildSky(G.scene);
+  buildSky(G.scene, G.renderer);
   buildCityMeshes(G.scene);
   initEffects(G.scene);
   const s = layout.pois.safehouse;
@@ -69,6 +70,10 @@ function buildWorld() {
   placeShells();
   G.hurtPlayer = hurtPlayer;
   G.onPlayerDeath = playerDown;
+  const stations = ['WAVE 104.2 — Radio Palmera', 'WAVE 104.2 — synth hits from the Suncoast', 'WAVE 104.2 — sunset drive mix'];
+  G.onEnterVehicle = (v) => {
+    hud.toast(`${v.spec.name}  ·  ♪ ${stations[Math.floor(G.time) % stations.length]}`);
+  };
   G.onCarContact = (a, b, power) => {
     const pc = G.player.inCar;
     if (!pc || power < 4) return;
@@ -94,6 +99,7 @@ function playerDown(kind) {
   downKind = kind; downTimer = 3.2;
   G.player.dead = kind === 'wasted';
   hud.big(kind === 'wasted' ? 'WASTED' : 'BUSTED', kind === 'wasted' ? 'Mercy Palms will patch you up' : 'Bay PD keeps the change', kind === 'wasted' ? '#ff4f4f' : '#5a8cff', 3);
+  canvas.classList.add('dead');
   onPlayerDown();
   G.deathCam = true;
 }
@@ -109,6 +115,7 @@ function respawn() {
   clearWanted(); resetPolice();
   for (const q of [...G.peds]) if (q.kind === 'cop') q.remove();
   G.deathCam = false;
+  canvas.classList.remove('dead');
   hud.toast(`-${fee}$ ${downKind === 'wasted' ? 'hospital bill' : 'bail'}`);
   snapCamera();
   saveGame();
@@ -171,6 +178,7 @@ function startPlay() {
 
 let last = performance.now();
 function frame(now) {
+  if (G.externalSim) { requestAnimationFrame(frame); return; }
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (G.mode === 'play' || G.mode === 'menu') {
@@ -203,4 +211,11 @@ if (G.shot) {
   requestAnimationFrame(frame);
 }
 window.__G = G;
+window.__pois = layout.pois;
+// test hook: advance the simulation without rendering (used by automated play-tests)
+window.__sim = (n = 30, dt = 1 / 30) => {
+  G.externalSim = true;
+  for (let i = 0; i < n; i++) { step(dt); updateCamera(dt); endFrame(); }
+  return G.time;
+};
 void mouse;

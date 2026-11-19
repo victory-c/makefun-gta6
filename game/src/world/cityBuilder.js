@@ -144,7 +144,7 @@ function buildBuildings(scene, tex) {
   }
   const mats = {
     deco: new THREE.MeshStandardMaterial({ map: tex.deco, vertexColors: true, roughness: 0.75 }),
-    glass: new THREE.MeshStandardMaterial({ map: tex.glass, vertexColors: true, roughness: 0.25, metalness: 0.15 }),
+    glass: new THREE.MeshStandardMaterial({ map: tex.glass, vertexColors: true, roughness: 0.12, metalness: 0.55 }),
     house: new THREE.MeshStandardMaterial({ map: tex.house, vertexColors: true, roughness: 0.85 }),
     metal: new THREE.MeshStandardMaterial({ map: tex.metal, vertexColors: true, roughness: 0.6, metalness: 0.2 }),
   };
