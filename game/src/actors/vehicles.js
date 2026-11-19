@@ -256,6 +256,11 @@ export class Vehicle {
     if (this.slip > 5 && Math.abs(this.speed) > 6 && Math.random() < dt * 30) {
       fx.tireSmoke(this.x - this.forward.x * this.spec.len * 0.35, this.z - this.forward.z * this.spec.len * 0.35);
     }
+    if (this.slip > 3.5 && this.y < 0.1 && G.time - (this.lastSkid ?? 0) > 0.05) {
+      this.lastSkid = G.time;
+      const f = this.forward, back = this.spec.len / 2 - 0.85, side = this.spec.w / 2 - 0.12;
+      for (const s of [-1, 1]) fx.skid(this.x - f.x * back + f.z * side * s, this.z - f.z * back - f.x * side * s, Math.atan2(this.vx, this.vz));
+    }
   }
 
   remove() {

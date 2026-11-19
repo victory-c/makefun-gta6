@@ -76,7 +76,24 @@ export const fx = {
     scene.add(l);
     tracers.push({ l, t: 0.07 });
   },
+  // rubber left on the asphalt by sliding tyres (a ring buffer of instanced quads)
+  skid(x, z, h) {
+    if (!skids) {
+      skids = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.32, 0.9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.45, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }), SKIDS);
+      skids.count = SKIDS; skids.frustumCulled = false;
+      const hide = new THREE.Matrix4().makeTranslation(0, -100, 0);
+      for (let i = 0; i < SKIDS; i++) skids.setMatrixAt(i, hide);
+      scene.add(skids);
+    }
+    skidM.makeRotationY(h).setPosition(x, 0.03, z);
+    skids.setMatrixAt(skidIdx, skidM);
+    skidIdx = (skidIdx + 1) % SKIDS;
+    skids.instanceMatrix.needsUpdate = true;
+  },
 };
+const SKIDS = 600;
+let skids = null, skidIdx = 0;
+const skidM = new THREE.Matrix4();
 
 // Two persistent lights reused for blasts (adding lights at run time would recompile shaders).
 const flashes = [];
